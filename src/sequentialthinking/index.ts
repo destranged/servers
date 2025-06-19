@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import express from "express";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -234,6 +236,8 @@ You should:
   }
 };
 
+const app = express();
+
 const server = new Server(
   {
     name: "sequential-thinking-server",
@@ -266,13 +270,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 });
 
+/*
 async function runServer() {
   const transport = new StdioServerTransport();
+  //const transport = new SSEServerTransport("127.0.0.1", );
   await server.connect(transport);
   console.error("Sequential Thinking MCP Server running on stdio");
 }
 
+app.post("/messages", (req, res) => {
+  const transport = new SSEServerTransport("127.0.0.1", );
+
+  if (transport) {
+    transport.handlePostMessage(req, res);
+  }
+});
+
 runServer().catch((error) => {
   console.error("Fatal error running server:", error);
   process.exit(1);
+});
+*/
+
+let transport: SSEServerTransport | null = null;
+
+app.get("/sse", (req, res) => {
+  transport = new SSEServerTransport("/messages", res);
+  server.connect(transport);
+});
+
+app.post("/messages", (req, res) => {
+  if (transport) {
+    transport.handlePostMessage(req, res);
+  }
+});
+
+app.listen(3000, () => {
+  console.error("Sequential Thinking MCP Server running on sse");
 });
